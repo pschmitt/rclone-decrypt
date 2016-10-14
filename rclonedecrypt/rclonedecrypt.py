@@ -73,7 +73,7 @@ def which(program):
         if is_exe(program):
             return program
     else:
-        for path in os.environ["PATH"].split(os.pathsep):
+        for path in os.environ['PATH'].split(os.pathsep):
             path = path.strip('"')
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
@@ -179,7 +179,7 @@ def rclone_mount(config, rclone_decrypt_dir):
     )
     logging.info('Spawn {}'.format(cmd))
     scmd = shlex.split(cmd)
-    return subprocess.Popen(scmd)
+    return subprocess.Popen(scmd).pid
 
 
 @timeout(10)
@@ -207,12 +207,13 @@ def main():
     update_config(args.config, args.remote, rclone_local_dir)
     create_dirs(rclone_dirs)
     copy_files(args.FILES, rclone_local_dir)
-    pid = rclone_mount(args.config, rclone_decrypt_dir).pid
+    pid = rclone_mount(args.config, rclone_decrypt_dir)
     logging.info('rclone pid: {}'.format(pid))
     atexit.register(functools.partial(terminate, pid, rclone_dirs))
     wait_for_decryption(rclone_decrypt_dir)
     copy_files(
-        [os.path.join(rclone_decrypt_dir, x) for x in os.listdir(rclone_decrypt_dir)],
+        [os.path.join(rclone_decrypt_dir, x) for x in \
+            os.listdir(rclone_decrypt_dir)],
         args.destination
     )
 
