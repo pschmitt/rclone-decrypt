@@ -33,6 +33,11 @@ def writable_directory(directory):
     return directory
 
 def parse_args():
+    '''
+    Parse arguments
+    :return: The parsed arguments
+    :rtype: argparse.Namespace
+    '''
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-r', '--remote',
@@ -72,6 +77,8 @@ def which(program):
 
     :param program: Name of the program to get the full path to
     :type program: str or unicode
+    :return: Full path to the program
+    :rtype: str or unicode
     '''
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -103,6 +110,8 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
     :type seconds: int
     :param error_message: Error Message to display when the timeout is reached
     :type error_message: str or unicode
+    :return: The decorated function
+    :rtype: function
     '''
     def decorator(func):
         def _handle_timeout(signum, frame):
@@ -248,6 +257,8 @@ def rclone_mount(config, rclone_decrypt_dir):
     :type config: file
     :param rclone_decrypt_dir: Path where to mount the decrypted files to
     :type rclone_decrypt_dir: str or unicode
+    :return: PID of the rclone process
+    :rtype: int
     '''
     cmd = '{} --config {} mount local-crypt:/ {}'.format(
         which('rclone'), config.name, rclone_decrypt_dir
@@ -259,6 +270,13 @@ def rclone_mount(config, rclone_decrypt_dir):
 
 @timeout(10)
 def wait_for_decryption(rclone_decrypt_dir):
+    '''
+    Wait for the decryption to happen (ie. rclone mount)
+
+    :param rclone_decrypt_dir: Where to look for files (rclone mount
+    mountpoint)
+    :type rclone_decrypt_dir: str or unicode
+    '''
     while True:
         if os.listdir(rclone_decrypt_dir):
             break
