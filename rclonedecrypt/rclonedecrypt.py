@@ -180,7 +180,6 @@ def rclone_mount(config, rclone_decrypt_dir):
 @timeout(10)
 def wait_for_decryption(rclone_decrypt_dir):
     while True:
-        print(os.listdir(rclone_decrypt_dir))
         if os.listdir(rclone_decrypt_dir):
             break
         time.sleep(1)
