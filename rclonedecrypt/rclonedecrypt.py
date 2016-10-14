@@ -21,7 +21,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def check_directory(directory):
+def writable_directory(directory):
+    '''
+    Argparse helper function that determines wheter a provided arguement is
+    a writable directory
+    '''
     if not os.access(directory, os.W_OK | os.X_OK):
         raise argparse.ArgumentTypeError(
             '{} is not a writable directory'.format(directory)
@@ -45,7 +49,7 @@ def parse_args():
     parser.add_argument(
         '-d', '--destination',
         help='Destination',
-        type=check_directory,
+        type=writable_directory,
         default=os.getcwd()
     )
     parser.add_argument(
@@ -63,7 +67,11 @@ def parse_args():
 
 def which(program):
     '''
+    Determine the full path to an executable
     Source: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/377028#377028
+
+    :param program: Name of the program to get the full path to
+    :type program: str or unicode
     '''
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -86,6 +94,16 @@ class TimeoutError(Exception):
 
 
 def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    '''
+    Decorator that raises an TimeoutError when the timer ends and the function
+    has not ended yet
+    Source: http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish/2282656#2282656
+
+    :param seconds: Time the decorated function is alloted to return
+    :type seconds: int
+    :param error_message: Error Message to display when the timeout is reached
+    :type error_message: str or unicode
+    '''
     def decorator(func):
         def _handle_timeout(signum, frame):
             raise TimeoutError(error_message)
@@ -105,16 +123,39 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
 
 
 def restore_config(config):
+    '''
+    Restore the config file ie. restore the backup
+
+    :param config: Config file to restore
+    :type config: file
+    '''
     logger.info('Restore original config file')
     shutil.move('{}.bak'.format(config.name, '.bak'), config.name)
 
 
 def backup_config(config):
+    '''
+    Back up the config file
+
+    :param config: Config file to back up
+    :type config: file
+    '''
     logger.info('Back up config file')
     shutil.copy2(config.name, '{}.bak'.format(config.name, '.bak'))
 
 
 def update_config(config, remote, rclone_local_dir):
+    '''
+    Alter rclone's config file. This adds two temporary remotes to be able to
+    decrypt the files.
+
+    :param config: Config file to update
+    :type config: file
+    :param remote: Name of the crypted remote
+    :type remote: str or unicode
+    :param rclone_local_dir: Local directory to use for the new remotes
+    :type rclone_local_dir: str or unicode
+    '''
     backup_config(config)
     atexit.register(functools.partial(restore_config, config))
     c = ConfigParser.ConfigParser()
@@ -133,6 +174,12 @@ def update_config(config, remote, rclone_local_dir):
 
 
 def create_dirs(directories):
+    '''
+    Create a bunch of directories
+
+    :param directories: The path of the directories to create
+    :type directories: list
+    '''
     for d in directories:
         if not os.path.exists(d):
             logging.info('Create directory {}'.format(d))
@@ -140,6 +187,12 @@ def create_dirs(directories):
 
 
 def umount_dirs(directories):
+    '''
+    Unmount a bunch of directories
+
+    :param directories: The directories to unmount
+    :type directories: list
+    '''
     DEVNULL = open(os.devnull, 'w')
     for d in directories:
         fusermount_bin = which('fusermount')
@@ -157,6 +210,12 @@ def umount_dirs(directories):
 
 
 def remove_dirs(directories):
+    '''
+    Remove a bunch of directories
+
+    :param directories: The directories to remove
+    :type directories: list
+    '''
     for d in directories:
         if os.path.exists(d):
             logging.info('Remove directory {}'.format(d))
@@ -164,6 +223,14 @@ def remove_dirs(directories):
 
 
 def copy_files(files, destination):
+    '''
+    Copy a set of files to a directory
+
+    :param files: The files to copy over
+    :type files: list
+    :param destination: Path to the destination directory
+    :type destination: str or unicode
+    '''
     for f in files:
         if type(f) in [str, unicode]:
             filename = f
@@ -174,6 +241,14 @@ def copy_files(files, destination):
 
 
 def rclone_mount(config, rclone_decrypt_dir):
+    '''
+    Mount the temporary remote using rclone mount
+
+    :param config: Config file
+    :type config: file
+    :param rclone_decrypt_dir: Path where to mount the decrypted files to
+    :type rclone_decrypt_dir: str or unicode
+    '''
     cmd = '{} --config {} mount local-crypt:/ {}'.format(
         which('rclone'), config.name, rclone_decrypt_dir
     )
@@ -191,7 +266,16 @@ def wait_for_decryption(rclone_decrypt_dir):
     logging.info('Files were decrypted')
 
 
-def terminate(rclone_pid, rclone_dirs):
+def clean_up(rclone_pid, rclone_dirs):
+    '''
+    Clean up by stopping the rclone mount command, umounting and removing the
+    temporary directories
+
+    :param rclone_pid: PID of the rclone process
+    :type pid: int
+    :param rclone_dirs: Paths to the directories to unmount and delete
+    :type rclone_dirs: list
+    '''
     logging.info('Kill rclone pid {}'.format(rclone_pid))
     os.kill(rclone_pid, signal.SIGTERM)
     umount_dirs(rclone_dirs)
@@ -199,6 +283,9 @@ def terminate(rclone_pid, rclone_dirs):
 
 
 def main():
+    '''
+    Main function, entry point
+    '''
     rclone_local_dir = os.path.expanduser('~/.cache/rclone/local')
     rclone_decrypt_dir = os.path.expanduser('~/.cache/rclone/decrypted')
     rclone_dirs = [rclone_local_dir, rclone_decrypt_dir]
@@ -209,7 +296,7 @@ def main():
     copy_files(args.FILES, rclone_local_dir)
     pid = rclone_mount(args.config, rclone_decrypt_dir)
     logging.info('rclone pid: {}'.format(pid))
-    atexit.register(functools.partial(terminate, pid, rclone_dirs))
+    atexit.register(functools.partial(clean_up, pid, rclone_dirs))
     wait_for_decryption(rclone_decrypt_dir)
     copy_files(
         [os.path.join(rclone_decrypt_dir, x) for x in \
