@@ -15,6 +15,7 @@ import shutil
 import signal
 import subprocess
 import time
+import zipfile
 
 
 logging.basicConfig(level=logging.INFO)
@@ -56,6 +57,12 @@ def parse_args():
         help='Destination',
         type=writable_directory,
         default=os.getcwd()
+    )
+    parser.add_argument(
+        '-e', '--extract',
+        help='Extract zip files',
+        action='store_true',
+        default=False
     )
     parser.add_argument(
         'FILES',
@@ -230,6 +237,28 @@ def remove_dirs(directories):
             logging.info('Remove directory {}'.format(d))
             shutil.rmtree(d)
 
+def copytree(src, dst, symlinks=False, ignore=None):
+    '''
+    Copy files or directories
+    Source: http://stackoverflow.com/a/12514470/1872036
+
+    :param src: Source file or directory
+    :type src: str or unicode
+    :param dst: Destination directory
+    :type dst: str or unicode
+    :param symlinks: Whether to copy symlinks
+    :type symlinks: bool
+    :param ignore: Ignore pattern
+    :type ignore: callable
+    '''
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, symlinks, ignore)
+        else:
+            shutil.copy2(s, d)
+
 
 def copy_files(files, destination):
     '''
@@ -246,7 +275,31 @@ def copy_files(files, destination):
         else:
             filename = f.name
         logger.info('Copy {} to {}'.format(filename, destination))
-        shutil.copy2(filename, destination)
+        copytree(filename, destination)
+
+
+def extract_files(files, destination):
+    '''
+    Extract some zipfiles to a common destination
+
+    :param files: The files to copy over
+    :type files: list
+    :param destination: Path to the destination directory
+    :type destination: str or unicode
+    '''
+    for f in files:
+        if type(f) in [str, unicode]:
+            filename = f
+        else:
+            filename = f.name
+        if zipfile.is_zipfile(filename):
+            # TODO Avoid name collision
+            # dest = os.path.join(destination, os.path.basename(filename))
+            # create_dirs([dest])
+            z = zipfile.ZipFile(filename)
+            z.extractall(destination)
+        else:
+            logger.error('Not a zipfile: {}. Skip.'.format(filename))
 
 
 def rclone_mount(config, rclone_decrypt_dir):
@@ -311,7 +364,10 @@ def main():
 
     update_config(args.config, args.remote, rclone_local_dir)
     create_dirs(rclone_dirs)
-    copy_files(args.FILES, rclone_local_dir)
+    if args.extract:
+        extract_files(args.FILES, rclone_local_dir)
+    else:
+        copy_files(args.FILES, rclone_local_dir)
     pid = rclone_mount(args.config, rclone_decrypt_dir)
     logging.info('rclone pid: {}'.format(pid))
     atexit.register(functools.partial(clean_up, pid, rclone_dirs))
