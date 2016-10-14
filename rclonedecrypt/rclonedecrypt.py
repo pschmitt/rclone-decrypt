@@ -270,6 +270,11 @@ def copytree(src, dst, symlinks=False, ignore=None):
         s = os.path.join(src, item)
         d = os.path.join(dst, item)
         if os.path.isdir(s):
+            d = os.path.join(
+                os.path.dirname(d),
+                os.path.basename(os.path.dirname(s)),
+                os.path.basename(d)
+            )
             shutil.copytree(s, d, symlinks, ignore)
         else:
             shutil.copy2(s, d)
@@ -290,7 +295,10 @@ def copy_files(files, destination):
         else:
             filename = f.name
         logger.info('Copy {} to {}'.format(filename, destination))
-        copytree(filename, destination)
+        if os.path.isfile(filename):
+            shutil.copy2(filename, destination)
+        else:
+            copytree(filename, destination)
 
 
 def extract_files(files, destination):
