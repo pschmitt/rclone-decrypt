@@ -205,7 +205,7 @@ def main():
     copy_files(args.FILES, rclone_local_dir)
     pid = rclone_mount(args.config, rclone_decrypt_dir).pid
     logging.info('rclone pid: {}'.format(pid))
-    atexit.register(functools.partial(terminate, pid))
+    atexit.register(functools.partial(terminate, pid, rclone_dirs))
     atexit.register(functools.partial(remove_dirs, rclone_dirs))
     wait_for_decryption(rclone_decrypt_dir)
     copy_files(
