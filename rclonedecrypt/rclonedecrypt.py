@@ -26,7 +26,14 @@ def writable_directory(directory):
     '''
     Argparse helper function that determines wheter a provided arguement is
     a writable directory
+
+    :param directory: Path of the directory to check
+    :type directory: str or unicode
     '''
+    if not os.path.exists(directory):
+        raise argparse.ArgumentTypeError(
+            '{}: No such file or directory'.format(directory)
+        )
     if not os.access(directory, os.W_OK | os.X_OK):
         raise argparse.ArgumentTypeError(
             '{} is not a writable directory'.format(directory)
