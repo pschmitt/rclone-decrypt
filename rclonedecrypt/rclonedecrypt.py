@@ -390,7 +390,18 @@ def main():
     if args.extract:
         extract_files(args.FILES, rclone_local_dir)
     else:
-        copy_files(args.FILES, rclone_local_dir)
+        if len(args.FILES) == 1 and \
+            os.path.basename(args.FILES[0].name) == 'AmazonDriveDownload.zip':
+            resp = raw_input(
+                'This looks like a zipped folder downloaded from ACD.'
+                ' Extract it? (y|n) '
+            )
+            if resp.lower() in ['y', 'yes']:
+                extract_files(args.FILES, rclone_local_dir)
+            else:
+                copy_files(args.FILES, rclone_local_dir)
+        else:
+            copy_files(args.FILES, rclone_local_dir)
     pid = rclone_mount(args.config, rclone_decrypt_dir)
     logging.info('rclone pid: {}'.format(pid))
     atexit.register(functools.partial(clean_up, pid, rclone_dirs))
