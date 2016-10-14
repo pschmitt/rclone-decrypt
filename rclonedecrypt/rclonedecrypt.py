@@ -140,15 +140,20 @@ def create_dirs(directories):
 
 
 def umount_dirs(directories):
+    DEVNULL = open(os.devnull, 'w')
     for d in directories:
         fusermount_bin = which('fusermount')
-        if os.path.ismount(d):
-            umount_cmd = '{} -u {}'.format(fusermount_bin, d)
-            logging.info('Call {}'.format(umount_cmd))
-            try:
-                subprocess.call(shlex.split(umount_cmd))
-            except Exception as e:
-                logger.error(e)
+        # if os.path.ismount(d):
+        umount_cmd = '{} -u {}'.format(fusermount_bin, d)
+        logging.info('Call {}'.format(umount_cmd))
+        try:
+            subprocess.call(
+                shlex.split(umount_cmd),
+                stdout=DEVNULL,
+                stderr=DEVNULL
+            )
+        except Exception as e:
+            logger.error(e)
 
 
 def remove_dirs(directories):
