@@ -31,9 +31,17 @@ def writable_directory(directory):
     :type directory: str or unicode
     '''
     if not os.path.exists(directory):
-        raise argparse.ArgumentTypeError(
-            '{}: No such file or directory'.format(directory)
+        resp = raw_input(
+            'Destination {} does not exist. Create it ? (y|n) '.format(
+                directory
+            )
         )
+        if resp.lower() in ['y', 'yes']:
+            create_dirs([directory])
+        else:
+            raise argparse.ArgumentTypeError(
+                '{}: No such file or directory'.format(directory)
+            )
     if not os.access(directory, os.W_OK | os.X_OK):
         raise argparse.ArgumentTypeError(
             '{} is not a writable directory'.format(directory)
