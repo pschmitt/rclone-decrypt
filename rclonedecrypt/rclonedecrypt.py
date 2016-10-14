@@ -213,7 +213,7 @@ def create_dirs(directories):
     '''
     for d in directories:
         if not os.path.exists(d):
-            logging.info('Create directory {}'.format(d))
+            logging.debug('Create directory {}'.format(d))
             os.makedirs(d)
 
 
@@ -229,7 +229,7 @@ def umount_dirs(directories):
         fusermount_bin = which('fusermount')
         # if os.path.ismount(d):
         umount_cmd = '{} -u {}'.format(fusermount_bin, d)
-        logging.info('Call {}'.format(umount_cmd))
+        logging.debug('Call {}'.format(umount_cmd))
         try:
             subprocess.call(
                 shlex.split(umount_cmd),
@@ -249,7 +249,7 @@ def remove_dirs(directories):
     '''
     for d in directories:
         if os.path.exists(d):
-            logging.info('Remove directory {}'.format(d))
+            logging.debug('Remove directory {}'.format(d))
             shutil.rmtree(d)
 
 def copytree(src, dst, symlinks=False, ignore=None):
@@ -294,7 +294,7 @@ def copy_files(files, destination):
             filename = f
         else:
             filename = f.name
-        logger.info('Copy {} to {}'.format(filename, destination))
+        logger.debug('Copy {} to {}'.format(filename, destination))
         if os.path.isfile(filename):
             shutil.copy2(filename, destination)
         else:
@@ -334,12 +334,12 @@ def rclone_mount(config, rclone_decrypt_dir):
     :param rclone_decrypt_dir: Path where to mount the decrypted files to
     :type rclone_decrypt_dir: str or unicode
     :return: PID of the rclone process
-    :rtype: int
+    :rtype: nt
     '''
     cmd = '{} --config {} mount local-crypt:/ {}'.format(
         which('rclone'), config.name, rclone_decrypt_dir
     )
-    logging.info('Spawn {}'.format(cmd))
+    logging.debug('Spawn {}'.format(cmd))
     scmd = shlex.split(cmd)
     return subprocess.Popen(scmd).pid
 
@@ -370,7 +370,7 @@ def clean_up(rclone_pid, rclone_dirs):
     :param rclone_dirs: Paths to the directories to unmount and delete
     :type rclone_dirs: list
     '''
-    logging.info('Kill rclone pid {}'.format(rclone_pid))
+    logging.debug('Kill rclone pid {}'.format(rclone_pid))
     os.kill(rclone_pid, signal.SIGTERM)
     umount_dirs(rclone_dirs)
     remove_dirs(rclone_dirs)
@@ -403,7 +403,7 @@ def main():
         else:
             copy_files(args.FILES, rclone_local_dir)
     pid = rclone_mount(args.config, rclone_decrypt_dir)
-    logging.info('rclone pid: {}'.format(pid))
+    logging.debug('rclone pid: {}'.format(pid))
     atexit.register(functools.partial(clean_up, pid, rclone_dirs))
     wait_for_decryption(rclone_decrypt_dir)
     copy_files(
