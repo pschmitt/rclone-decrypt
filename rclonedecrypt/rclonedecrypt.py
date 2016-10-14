@@ -37,7 +37,7 @@ def writable_directory(directory):
             )
         )
         if resp.lower() in ['y', 'yes']:
-            create_dirs([directory])
+            create_dir(directory)
         else:
             raise argparse.ArgumentTypeError(
                 '{}: No such file or directory'.format(directory)
@@ -81,7 +81,8 @@ def parse_args():
     )
     parser.add_argument(
         '--local-dir',
-        help='rclone local directory (temp dir - where files will land)',
+        help='rclone local directory (temp dir - where encrypted files will '
+        'land)',
         default=os.path.expanduser('~/.cache/rclone/local'),
         required=False
     )
@@ -217,13 +218,17 @@ def update_config(config, remote, rclone_local_dir):
     config.close()
 
 
-def create_dirs(directories):
+def create_dir(directory):
     '''
     Create a bunch of directories
 
     :param directories: The path of the directories to create
     :type directories: list
     '''
+    if type(directory) is list:
+        directories = directory
+    else:
+        directories = [directory]
     for d in directories:
         if not os.path.exists(d):
             logging.debug('Create directory {}'.format(d))
@@ -281,13 +286,16 @@ def copytree(src, dst, symlinks=False, ignore=None):
     '''
     for item in os.listdir(src):
         s = os.path.join(src, item)
-        d = os.path.join(dst, item)
+        _d = os.path.join(dst, item)
+        d = os.path.join(
+            os.path.dirname(_d),
+            os.path.basename(os.path.dirname(s)),
+            os.path.basename(_d)
+        )
+        if not os.path.exists(d):
+            create_dir(d)
+        logger.debug('COPY TREE from {} to {}'.format(s, d))
         if os.path.isdir(s):
-            d = os.path.join(
-                os.path.dirname(d),
-                os.path.basename(os.path.dirname(s)),
-                os.path.basename(d)
-            )
             shutil.copytree(s, d, symlinks, ignore)
         else:
             shutil.copy2(s, d)
@@ -331,7 +339,7 @@ def extract_files(files, destination):
         if zipfile.is_zipfile(filename):
             # TODO Avoid name collision
             # dest = os.path.join(destination, os.path.basename(filename))
-            # create_dirs([dest])
+            # create_dir(dest)
             z = zipfile.ZipFile(filename)
             z.extractall(destination)
         else:
@@ -396,8 +404,7 @@ def main():
     args = parse_args()
     rclone_dirs = [args.local_dir, args.decrypt_dir]
 
-    update_config(args.config, args.remote, args.local_dir)
-    create_dirs(rclone_dirs)
+    create_dir(args.local_dir)
     if args.extract:
         extract_files(args.FILES, args.local_dir)
     else:
@@ -413,6 +420,8 @@ def main():
                 copy_files(args.FILES, args.local_dir)
         else:
             copy_files(args.FILES, args.local_dir)
+    update_config(args.config, args.remote, args.local_dir)
+    create_dir(args.decrypt_dir)
     pid = rclone_mount(args.config, args.decrypt_dir)
     logging.debug('rclone pid: {}'.format(pid))
     atexit.register(functools.partial(clean_up, pid, rclone_dirs))
