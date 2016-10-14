@@ -80,6 +80,19 @@ def parse_args():
         default=False
     )
     parser.add_argument(
+        '--local-dir',
+        help='rclone local directory (temp dir - where files will land)',
+        default=os.path.expanduser('~/.cache/rclone/local'),
+        required=False
+    )
+    parser.add_argument(
+        '--decrypt-dir',
+        help='rclone decrypt directory (temp dir - where decrypted files will '
+        'be at',
+        default=os.path.expanduser('~/.cache/rclone/decrypted'),
+        required=False
+    )
+    parser.add_argument(
         'FILES',
         type=argparse.FileType('r'),
         nargs='+'
@@ -380,15 +393,13 @@ def main():
     '''
     Main function, entry point
     '''
-    rclone_local_dir = os.path.expanduser('~/.cache/rclone/local')
-    rclone_decrypt_dir = os.path.expanduser('~/.cache/rclone/decrypted')
-    rclone_dirs = [rclone_local_dir, rclone_decrypt_dir]
     args = parse_args()
+    rclone_dirs = [args.local_dir, args.decrypt_dir]
 
-    update_config(args.config, args.remote, rclone_local_dir)
+    update_config(args.config, args.remote, args.local_dir)
     create_dirs(rclone_dirs)
     if args.extract:
-        extract_files(args.FILES, rclone_local_dir)
+        extract_files(args.FILES, args.local_dir)
     else:
         if len(args.FILES) == 1 and \
             os.path.basename(args.FILES[0].name) == 'AmazonDriveDownload.zip':
@@ -397,18 +408,18 @@ def main():
                 ' Extract it? (y|n) '
             )
             if resp.lower() in ['y', 'yes']:
-                extract_files(args.FILES, rclone_local_dir)
+                extract_files(args.FILES, args.local_dir)
             else:
-                copy_files(args.FILES, rclone_local_dir)
+                copy_files(args.FILES, args.local_dir)
         else:
-            copy_files(args.FILES, rclone_local_dir)
-    pid = rclone_mount(args.config, rclone_decrypt_dir)
+            copy_files(args.FILES, args.local_dir)
+    pid = rclone_mount(args.config, args.decrypt_dir)
     logging.debug('rclone pid: {}'.format(pid))
     atexit.register(functools.partial(clean_up, pid, rclone_dirs))
-    wait_for_decryption(rclone_decrypt_dir)
+    wait_for_decryption(args.decrypt_dir)
     copy_files(
-        [os.path.join(rclone_decrypt_dir, x) for x in \
-            os.listdir(rclone_decrypt_dir)],
+        [os.path.join(args.decrypt_dir, x) for x in \
+            os.listdir(args.decrypt_dir)],
         args.destination
     )
 
